@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Multi-Series Line Chart</title>
+</head>
+<body>
+<script src="http://d3js.org/d3.v2.js"></script>
+<script src="js/jquery-2.2.3.js"></script>
+  <script src="js/d3.min.js"></script>
+<script>
+var request = new XMLHttpRequest();
+request.open("GET", "js/urban_population.json", false);
+request.send(null);
+var jsonPts = JSON.parse(request.responseText);
+var urbanPts = [];
+var ruralPts = [];
+for(var i=0;i<jsonPts.length;i++) {
+  if(jsonPts[i].IndicatorCode=="SP.RUR.TOTL.ZS") {
+    ruralPts.push(jsonPts[i]);
+  } else {
+    urbanPts.push(jsonPts[i]);
+  }
+}
+multiLine(urbanPts, ruralPts);
+
+function multiLine(urbanPts, ruralPts) {
+  var width = 1000,
+      height = 500,
+      padding = 100;
+  //Create the SVG Viewport selection
+  var svgContainer = d3.select("body").append("svg")
+               .attr("width", width)
+               .attr("height", height);
+
+  //Create the Scale we will use for the Axis
+  var xAxisScale = d3.scale.linear()
+   .domain([1960, 2015])
+   .range([0, 800]);
+  //Create the Axis
+  var xAxis = d3.svg.axis().orient("bottom").scale(xAxisScale);
+
+  //Create an SVG group Element for the Axis elements and call the xAxis function
+  var xAxisGroup = svgContainer.append("g").attr("transform", "translate(100," + (height - padding +10) + ")").call(xAxis);
+
+  //Create the Scale we will use for the Axis
+  var yAxisScale = d3.scale.linear()
+   .domain([100, 0])
+   .range([0, 400]);
+  //Create the Axis
+  var yAxis = d3.svg.axis().orient("left").scale(yAxisScale);
+
+  //Create an SVG group Element for the Axis elements and call the xAxis function
+  var yAxisGroup = svgContainer.append("g").attr("transform", "translate("+padding+",10)").call(yAxis);
+
+  // Define 'div' for tooltips
+  var div = d3.select("body")
+  .append("div")  // declare the tooltip div
+  .attr("class", "tooltip")              // apply the 'tooltip' class
+  .style("opacity", 0);                  // set the opacity to nil
+
+  svgContainer.append("text")
+          .attr("class", "yaxis_label")
+          .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+          .attr("transform", "translate("+ (padding/2) +","+(height/2)+")rotate(-90)")  // text is drawn off the screen top left, move down and out and rotate
+          .text("Population (%)");
+
+  svgContainer.append("text")
+          .attr("class", "xaxis_label")
+          .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+          .attr("transform", "translate("+ (width/2) +","+(height-40)+")")  // text is drawn off the screen top left, move down and out and rotate
+          .text("Year");
+
+  svgContainer.append("text")
+          .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+          .attr("transform", "translate("+ (width/2) +","+(height-20)+")")  // text is drawn off the screen top left, move down and out and rotate
+          .text("Urban-Blue & Rural-Red");
+
+  var lineFunctionForUrban = d3.svg.line()
+                          .x(function(d) { return 100+(d.Year-1960)*(800/55); })
+                          .y(function(d) { return (400-d.Value*4)+10; })
+                          .interpolate("linear");
+//The line SVG Path we draw
+  var lineGraphUrban = svgContainer.append("path")
+                            .attr("d", lineFunctionForUrban(urbanPts))
+                            .attr("stroke", "blue")
+                            .attr("stroke-width", 2)
+                            .attr("fill", "none");
+
+  var lineFunctionForRural = d3.svg.line()
+                          .x(function(d) { return 100+(d.Year-1960)*(800/55); })
+                          .y(function(d) { return (400-d.Value*4)+10; })
+                          .interpolate("linear");
+
+//The line SVG Path we draw
+  var lineGraphRural = svgContainer.append("path")
+                            .attr("d", lineFunctionForRural(ruralPts))
+                            .attr("stroke", "red")
+                            .attr("stroke-width", 2)
+                            .attr("fill", "none");
+
+  svgContainer.selectAll("circle")
+      .data(jsonPts)
+      .enter().append("circle")
+      .attr("cx", function(d) { return 100+(d.Year-1960)*(800/55); })
+      .attr("cy", function(d) { return (400-d.Value*4)+10; })
+      .attr("r", 3)
+      .style("fill", "Black");
+}
+
+
+
+
+$(document).ready(function(){
+      $('#source').jPut({
+          jsonData:urbanPts,
+          name:'urban_table_template'
+        });
+        $('#source').jPut({
+          jsonData:urbanPts,
+          name:'urban_table_template'
+        });
+        multiLine(urbanPts,ruralPts);
+  });
+
+
+
+function deleteRowFunction(btndel) {
+    if (typeof(btndel) == "object") {
+      var yearIndexVal = $(btndel).closest("tr").children("td").slice(0,2).text();
+      var valueIndexVal = $(btndel).closest("tr").children("td").slice(0,3).text();
+      var typeIndexVal = $(btndel).closest("tr").children("td").slice(0,4).text();
+      $(btndel).closest("tr").remove();
+
+      for(var i=0;i<urbanPts.length;i++){
+        if(urbanPts[i].Year == yearIndexVal && (typeIndexVal.indexOf(urbanPts[i].IndicatorCode)!=-1) ) {
+           urbanPts.splice(i,1);
+        }
+      }
+      for(var i=0;i<ruralPts.length;i++){
+        if(ruralPts[i].Year == yearIndexVal && (typeIndexVal.indexOf(ruralPts[i].IndicatorCode)!=-1) ) {
+           ruralPts.splice(i,1);
+        }
+      }
+      $("svg").find("*").remove();
+      $("svg").css({
+                    top: 0,
+                    left: 0,
+                    position: 'absolute'
+                });
+      multiLine(urbanPts,ruralPts);
+    } else {
+      return false;
+    }
+  }
+</script>
+<div>
+    <table class="table" id="source">
+      <thead>
+        <tr>Rural</tr>
+        <tr>
+        <th>Delete Option</th>
+        <th>Year</th>
+        <th>Value</th>
+        </tr>
+      </thead>
+      <tbody jput="rural_table_template" id="output">
+      <tr>
+      <td><input type="button" value="Delete Row" onclick="deleteRowFunction(this);"></td>
+      <td>{{Year}}</td>
+      <td>{{Value}}</td>
+      <td style="display: none;">{{IndicatorCode}}</td>
+      </tr>
+      </tbody>
+      </table>
+  </div>    
+   <div>
+    <table class="table" id="source">
+      <thead>
+        <tr>Urban</tr>
+        <tr>
+        <th>Delete Option</th>
+        <th>Year</th>
+        <th>Value</th>
+        </tr>
+      </thead>
+      <tbody jput="urban_table_template" id="output">
+      <tr>
+      <td><input type="button" value="Delete Row" onclick="deleteRowFunction(this);"></td>
+      <td>{{Year}}</td>
+      <td>{{Value}}</td>
+      <td style="display: none;">{{IndicatorCode}}</td>
+      </tr>
+      </tbody>
+      </table>
+  </div>
+<h2 style="padding-left: 10%">Multi-series line chart for Urban population and Rural population in India over 1960 - 2015</h2>
+   <script src="js/jput.min.js"></script>
+</body>
+
+</html>
+

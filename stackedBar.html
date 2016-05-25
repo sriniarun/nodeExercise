@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Jquery -Stacked Bar Chart</title>
+	<script src="./js/jquery-2.2.3.js"></script>
+	<script src="./js/d3.min.js"></script>
+	<style type="text/css">
+		.modalDialog {
+    position: fixed;
+    font-family: Arial, Helvetica, sans-serif;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 99999;
+    opacity:0;
+    -webkit-transition: opacity 400ms ease-in;
+    -moz-transition: opacity 400ms ease-in;
+    transition: opacity 400ms ease-in;
+    pointer-events: none;
+}
+.modalDialog:target {
+    opacity:1;
+    pointer-events: auto;
+}
+.modalDialog > div {
+    width: 400px;
+    position: relative;
+    margin: 10% auto;
+    padding: 5px 20px 13px 20px;
+    border-radius: 10px;
+    background: #fff;
+    background: -moz-linear-gradient(#fff, #999);
+    background: -webkit-linear-gradient(#fff, #999);
+    background: -o-linear-gradient(#fff, #999);
+}
+.close {
+    background: #606061;
+    color: #FFFFFF;
+    line-height: 25px;
+    position: absolute;
+    right: -12px;
+    text-align: center;
+    top: -10px;
+    width: 24px;
+    text-decoration: none;
+    font-weight: bold;
+    -webkit-border-radius: 12px;
+    -moz-border-radius: 12px;
+    border-radius: 12px;
+    -moz-box-shadow: 1px 1px 3px #000;
+    -webkit-box-shadow: 1px 1px 3px #000;
+    box-shadow: 1px 1px 3px #000;
+}
+.close:hover {
+    background: #00d9ff;
+}
+	</style>
+  </head>
+
+  <body>
+  <script>	
+    var request = new XMLHttpRequest();
+    request.open("GET", "./js/asian_rural_population.json", false);
+    request.send(null);
+    var jsonRects = JSON.parse(request.responseText);
+
+    var ASIAN_COUNTRIES = ["Afghanistan", "Bahrain", "Bangladesh", "Bhutan", "Myanmar", "Cambodia", "China", "India", "Indonesia", "Iraq", "Israel", "Japan", "Jordan", "Kazakhstan", "Lebanon", "Malaysia", "Maldives", "Mongolia", "Nepal",
+"Oman", "Pakistan", "Philippines", "Qatar", "Saudi Arabia", "Singapore", "Sri Lanka", "Syrian Arab Republic", "Tajikistan", "Thailand", "Timor-Leste", "Turkmenistan", "United Arab Emirates", "Uzbekistan", "Vietnam"];
+
+	var data = [], min = Number.MAX_VALUE, max = Number.MIN_VALUE;
+
+	for(var i=0;i<jsonRects.length;i++) {
+	  var obj = jsonRects[i];
+	  if(data[parseInt(obj.Year)-1960]==null || data[parseInt(obj.Year)-1960]==undefined) {
+	    data[parseInt(obj.Year)-1960] = [];
+	  } else {
+	    if(obj.IndicatorCode==="SP.RUR.TOTL") {
+	      if(data[parseInt(obj.Year)-1960][1]==null) {
+	        data[parseInt(obj.Year)-1960][1] = {"Year":obj.Year, "Value":parseInt(obj.Value), "Color":"Red", "Region":"Rural"};
+	      } else {
+	        data[parseInt(obj.Year)-1960][1].Value += parseInt(obj.Value);
+	      }
+	    }
+	    if(obj.IndicatorCode==="SP.URB.TOTL") {
+	      if(data[parseInt(obj.Year)-1960][0]==null) {
+	        data[parseInt(obj.Year)-1960][0] = {"Year":obj.Year, "Value":parseInt(obj.Value), "Color":"Blue", "Region":"Urban"};
+	      } else {
+	        data[parseInt(obj.Year)-1960][0].Value += parseInt(obj.Value);
+	      }
+	    }
+	  }
+	}
+
+	for(var i=0;i<data.length;i++) {
+	  data[i][1].Total = parseInt(data[i][1].Value);
+	  data[i][0].Total = parseInt(data[i][1].Value) + parseInt(data[i][0].Value);
+	}
+
+	var rects = [];
+	for(var i=0;i<data.length;i++) {
+	  for(var j=0;j<data[i].length;j++) {
+	    rects.push(data[i][j]);
+	  }
+	}
+
+   
+   $(document).ready(function(){
+                $('#source').jPut({
+                    jsonData:rects,
+					name:'table_template'
+				});
+				stackedbar(rects);
+	});
+
+
+function stackedbar(rects) {
+ var width = 1500,
+      height = 700,
+      padding = 250;
+  //Create the SVG Viewport selection
+  var svgContainer = d3.select("body").append("svg")
+               .attr("width", width)
+               .attr("height", height);
+
+  //Create the Scale we will use for the Axis
+  var xAxisScale = d3.scale.linear()
+   .domain([1960, 2015])
+   .range([0, 900]);
+  //Create the Axis
+  var xAxis = d3.svg.axis().orient("bottom").scale(xAxisScale);
+
+  //Create an SVG group Element for the Axis elements and call the xAxis function
+  var xAxisGroup = svgContainer.append("g").attr("transform", "translate(250," + (height - padding +10 + 150) + ")").call(xAxis);
+
+  //Create the Scale we will use for the Axis
+  var yAxisScale = d3.scale.linear()
+   .domain([4000000000, 0])
+   .range([0, 600]);
+  //Create the Axis
+  var yAxis = d3.svg.axis().orient("left").scale(yAxisScale);
+
+  //Create an SVG group Element for the Axis elements and call the xAxis function
+  var yAxisGroup = svgContainer.append("g").attr("transform", "translate("+padding+",10)").call(yAxis);
+
+  
+  svgContainer.append("text")
+          .attr("class", "yaxis_label")
+          .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+          .attr("transform", "translate("+ (padding/2) +","+(height/2)+")rotate(-90)")  // text is drawn off the screen top left, move down and out and rotate
+          .text("Population");
+
+  svgContainer.append("text")
+          .attr("class", "xaxis_label")
+          .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+          .attr("transform", "translate("+ (width/2) +","+(height-40)+")")  // text is drawn off the screen top left, move down and out and rotate
+          .text("CountryName");
+
+  svgContainer.append("text")
+          .attr("text-anchor", "middle")  // this makes it easy to centre the text as the transform is applied to the anchor
+          .attr("transform", "translate("+ (width/2) +","+(height-20)+")")  // text is drawn off the screen top left, move down and out and rotate
+          .text("Asian countries Urban/Rural population");
+
+  svgContainer.selectAll("rect")
+      .data(rects)
+      .enter().append("rect")
+      .attr("x", function(d) { return 250+((parseInt(d.Year)-1960)*(900/55)); })
+      .attr("width", (900/55))
+      .attr("y", function(d) { return 600-((d.Total/4000000000)*600)+10; })
+      .attr("height", function(d) { return (parseInt(d.Total)/4000000000)*600; })
+      .attr("stroke", "black")
+      .attr("stroke-width", 0.5)
+      .style("fill", function(d) { return d.Color; })
+      .style("float", "left")
+      ;
+}	
+	
+	function deleteRowFunction(btndel) {
+		if (typeof(btndel) == "object") {
+			var yearIndexVal = $(btndel).closest("tr").children("td").slice(0,2).text();
+			var regionIndexVal = $(btndel).closest("tr").children("td").slice(0,3).text();
+			$(btndel).closest("tr").remove();
+			for(var i=0;i<rects.length;i++){
+				if(rects[i].Year == yearIndexVal && (regionIndexVal.indexOf(rects[i].Region)!=-1) ) {
+					 rects.splice(i,1);
+				}
+			}
+			$("svg").find("*").remove();
+			$("svg").css({
+                    top: 0,
+                    left: 0,
+                    position: 'absolute'
+                });
+			stackedbar(rects);
+		} else {
+			return false;
+		}
+	}
+
+	function validate(){
+		var countryName = $('select#countryName option:selected').val();
+		var year = $('select#year option:selected').val();
+		var indicatorName = $('select#indicatorName option:selected').val();
+		var indicatorCode ;
+		if(indicatorName == "Urban population"){
+			indicatorCode = "SP.URB.TOTL";
+		}else{
+			indicatorCode = "SP.RUR.TOTL";
+		}
+		var value = $('#value').val();
+		var CountryCode = countryName.substring(0, 3);
+		var param = [countryName,CountryCode,indicatorName,indicatorCode,year,value];
+		var obj = {};
+		  for(var i=0;i<param.length;i++){
+		       obj[headers[i]] = param[i];
+		  }
+		location.href="http://192.168.1.210:8080/addARow.html"+JSON.stringify(obj);
+		
+	}
+
+/*	var fs = require("fs");
+	var replace = require("replace");
+	var outstream = fs.WriteStream('./js/urban_population.json');
+	outstream.readable = true;
+	outstream.writable = true;	
+	headers = ["CountryName","CountryCode","IndicatorName","IndicatorCode","Year","Value"];
+	function addToJson(currentline){
+		outstream.replace("]","");
+		var obj = {};
+  for(var i=0;i<currentline.length;i++){
+       obj[headers[i]] = currentline[i];
+  }
+    outstream.write(","+JSON.stringify(obj)+"]");
+  
+		location.href="http://192.168.1.210:8080/";
+	} */
+  </script>
+	<div>
+		<div>
+			<div>
+				<table class="table" id="source">
+					<thead>
+						<tr>
+						<th>Delete Option</th>
+						<th>Year</th>
+						<th>Region</th>
+						<th>Value</th>
+						</tr>
+					</thead>
+					<tbody jput="table_template" id="output">
+					<tr>
+					<td><input type="button" value="Delete Row" onclick="deleteRowFunction(this);"></td>
+					<td>{{Year}}</td>
+					<td>{{Region}}</td>
+					<td>{{Total}}</td>
+					</tr>
+					</tbody>
+					</table>
+			</div>		
+			<div id="target">
+			<br>
+			<a href="#openModal">Add a record</a>
+
+			<div id="openModal" class="modalDialog">
+			    <div>	<a href="#close" title="Close" class="close">X</a>
+			    	<form action="/addARow.html" method="GET">
+			        	<h2>Add a record to graph</h2>
+			        	<table>
+			        		<tr>
+			        			<td>Country Name</td>
+			        			<td><select name="countryName" id="countryName" value=""></select></td>
+			        		</tr>
+			        		<tr>
+			        			<td>Indicator Name</td>
+			        			<td>
+			        				<select name="indicatorName" id="indicatorName" value="">
+				        				<option value="Rural population">Rural population</option>
+				        				<option value="Urban population">Urban population</option>
+			        				</select>
+			        			</td>
+			        		</tr>
+			        		<tr>
+			        			<td>Year</td>
+			        			<td><select name="year" id="year" value="">Year</select></td>
+			        		</tr>
+			        		<tr>
+			        			<td>Value</td>
+			        			<td><input id="value" name="value" value="" required="required" min="100000" max="99999999"></input></td>
+			        		</tr>
+			        		<tr>
+			        			<td><input type="submit" value="Add" onclick="validate();"></input></td>
+			        		</tr>
+			        	</table>
+			        	</br>
+			        	</br>
+			        </form>
+			    </div>
+			</div>
+				<h1>Stacked Bar chart of rural and urban population in the given time period of 1960 - 2015</h1>
+			</div>
+		</div>
+	</div>
+   <script src="./js/jput.min.js"></script>
+   <script type="text/javascript">
+   	$.each(ASIAN_COUNTRIES, function (i, item) {
+	    $('#countryName').append($('<option>', { 
+	        value: item,
+	        text : item 
+	    }));
+	});
+	var YEAR = [];
+	for (var i = 1960; i < 2016; i++) {
+		YEAR.push(i);
+	}
+	$.each(YEAR, function (i, item) {
+	    $('#year').append($('<option>', { 
+	        value: item,
+	        text : item 
+	    }));
+	});
+   </script>
+  </body>
+</html>
